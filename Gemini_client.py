@@ -5,11 +5,24 @@ import io
 from PIL import Image
 
 
-SYSTEM_PROMPT = (
+import os
+
+DEFAULT_SYSTEM_PROMPT = (
     "explain easily with metaphors or examples, "
     "focus on the core idea, and always respond in the user's input language, "
     "regardless of previous conversation history."
 )
+
+# 저장 경로
+SYSTEM_PROMPT_PATH = "storage/system_prompt.txt"
+
+# 파일에서 불러오기
+if os.path.exists(SYSTEM_PROMPT_PATH):
+    with open(SYSTEM_PROMPT_PATH, "r", encoding="utf-8") as f:
+        SYSTEM_PROMPT = f.read().strip()
+else:
+    SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
+
 
 
 class GeminiClient:

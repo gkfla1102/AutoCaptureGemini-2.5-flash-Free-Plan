@@ -1,6 +1,8 @@
 import sys
 import os
 import json
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 from PySide6.QtWidgets import ( # type: ignore
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
@@ -131,20 +133,23 @@ class SystemPromptDialog(QDialog):
         layout.addWidget(btn)
 
         # 기존 시스템 프롬프트 로드
-        from Gemini_client import SYSTEM_PROMPT
-        self.edit.setPlainText(SYSTEM_PROMPT)
+        import Gemini_client
+        self.edit.setPlainText(Gemini_client.SYSTEM_PROMPT)
 
         self.setLayout(layout)
 
     def save_prompt(self):
         new_prompt = self.edit.toPlainText().strip()
-        if new_prompt:
-            # ★ 글로벌 상수 수정
-            import Gemini_client
-            Gemini_client.SYSTEM_PROMPT = new_prompt
 
-        self.accept()
+        # 1) 파일에 저장
+        with open("storage/system_prompt.txt", "w", encoding="utf-8") as f:
+            f.write(new_prompt)
 
+        # 2) 메모리에도 즉시 반영
+        import Gemini_client
+        Gemini_client.SYSTEM_PROMPT = new_prompt
+
+        self.accept()  # 창 닫기
 
 
 # --------------------------------------------------------
@@ -269,6 +274,7 @@ class MainWindow(QWidget):
         if not os.path.exists("storage"):
             os.makedirs("storage")
 
+        
         # --------------------------------------------------------
         # 스크롤 영역
         # --------------------------------------------------------
@@ -341,6 +347,8 @@ class MainWindow(QWidget):
         self.MIN_INPUT_HEIGHT = 45
         self.MAX_INPUT_HEIGHT = 90
         self.input.setFixedHeight(self.MIN_INPUT_HEIGHT)
+
+        self.installEventFilter(self)
 
         self.input.setStyleSheet("""
             QTextEdit#ChatInput {
@@ -484,25 +492,27 @@ class MainWindow(QWidget):
 
     # 엔터키 처리
     def eventFilter(self, obj, event):
-        if obj == self.input and event.type() == QEvent.KeyPress:
+        if event.type() == QEvent.KeyPress:
 
-            # ★★★★★ Ctrl + P → 시스템 프롬프트 수정창 열기
+            # ★ Ctrl + P 항상 동작
             if event.key() == Qt.Key_P and (event.modifiers() & Qt.ControlModifier):
                 dlg = SystemPromptDialog()
                 dlg.exec()
                 return True
-            
-            if event.key() == Qt.Key_Return:
 
-                if event.modifiers() & Qt.ControlModifier:
-                    self.send_text_only()
+            # ★ 엔터키 처리만 input에 한정
+            if obj == self.input:
+                if event.key() == Qt.Key_Return:
+
+                    if event.modifiers() & Qt.ControlModifier:
+                        self.send_text_only()
+                        return True
+
+                    if event.modifiers() & Qt.ShiftModifier:
+                        return False
+
+                    self.send_with_capture()
                     return True
-
-                if event.modifiers() & Qt.ShiftModifier:
-                    return False
-
-                self.send_with_capture()
-                return True
 
         return super().eventFilter(obj, event)
 
@@ -641,3 +651,6 @@ win = MainWindow()
 win.show()
 
 sys.exit(app.exec())
+
+
+print("CURRENT WORKING DIR =", os.getcwd())
